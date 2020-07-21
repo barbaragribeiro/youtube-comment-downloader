@@ -211,6 +211,7 @@ def main(argv):
     parser = argparse.ArgumentParser(add_help=False, description=('Download Youtube comments without using the Youtube API'))
     parser.add_argument('--help', '-h', action='help', default=argparse.SUPPRESS, help='Show this help message and exit')
     parser.add_argument('--youtubeid', '-y', help='ID of Youtube video for which to download the comments')
+    parser.add_argument('--input', '-i', help='Input filename (file containing video IDs, one ID per line)')
     parser.add_argument('--output', '-o', help='Output filename (output format is line delimited JSON)')
     parser.add_argument('--limit', '-l', type=int, help='Limit the number of comments')
 
@@ -218,33 +219,44 @@ def main(argv):
         args = parser.parse_args(argv)
 
         youtube_id = args.youtubeid
-        output = args.output
+        input_file = args.input
+        output_template = args.output
         limit = args.limit
 
-        if not youtube_id or not output:
+        if not (youtube_id or input_file) or not output_template:
             parser.print_usage()
-            raise ValueError('you need to specify a Youtube ID and an output filename')
+            raise ValueError('you need to specify a Youtube ID/input filename and an output filename')
 
-        if os.sep in output:
-            outdir = os.path.dirname(output)
+        if os.sep in output_template:
+            outdir = os.path.dirname(output_template)
             if not os.path.exists(outdir):
                 os.makedirs(outdir)
+        
+        ids = []
+        if input_file:
+            with io.open(input_file, 'r', encoding='utf8') as fp:
+                for video_id in fp:
+                    ids.append(video_id.strip())
+        else:
+            ids = [youtube_id]
 
-        print('Downloading Youtube comments for video:', youtube_id)
-        count = 0
-        with io.open(output, 'w', encoding='utf8') as fp:
-            sys.stdout.write('Downloaded %d comment(s)\r' % count)
-            sys.stdout.flush()
-            start_time = time.time()
-            for comment in download_comments(youtube_id):
-                comment_json = json.dumps(comment, ensure_ascii=False)
-                print(comment_json.decode('utf-8') if isinstance(comment_json, bytes) else comment_json, file=fp)
-                count += 1
+        for video_id in ids:
+            print('Downloading Youtube comments for video:', video_id)
+            count = 0
+            output = output_template % {"id": video_id}
+            with io.open(output, 'w', encoding='utf8') as fp:
                 sys.stdout.write('Downloaded %d comment(s)\r' % count)
                 sys.stdout.flush()
-                if limit and count >= limit:
-                    break
-        print('\n[{:.2f} seconds] Done!'.format(time.time() - start_time))
+                start_time = time.time()
+                for comment in download_comments(video_id):
+                    comment_json = json.dumps(comment, ensure_ascii=False)
+                    print(comment_json.decode('utf-8') if isinstance(comment_json, bytes) else comment_json, file=fp)
+                    count += 1
+                    sys.stdout.write('Downloaded %d comment(s)\r' % count)
+                    sys.stdout.flush()
+                    if limit and count >= limit:
+                        break
+            print('\n[{:.2f} seconds] Done!'.format(time.time() - start_time))
 
     except Exception as e:
         print('Error:', str(e))
