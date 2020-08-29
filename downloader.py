@@ -241,6 +241,8 @@ def main(argv):
             ids = [youtube_id]
 
         for video_id in ids:
+            if 'youtube' in video_id:
+                video_id = video_id.split('watch?v=')[1]
             print('Downloading Youtube comments for video:', video_id)
             count = 0
             output = output_template % {"id": video_id}
