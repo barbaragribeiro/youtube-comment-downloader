@@ -226,11 +226,6 @@ def main(argv):
         if not (youtube_id or input_file) or not output_template:
             parser.print_usage()
             raise ValueError('you need to specify a Youtube ID/input filename and an output filename')
-
-        if os.sep in output_template:
-            outdir = os.path.dirname(output_template)
-            if not os.path.exists(outdir):
-                os.makedirs(outdir)
         
         ids = []
         if input_file:
@@ -246,6 +241,12 @@ def main(argv):
             print('Downloading Youtube comments for video:', video_id)
             count = 0
             output = output_template % {"id": video_id}
+
+            if os.sep in output:
+                outdir = os.path.dirname(output)
+                if not os.path.exists(outdir):
+                    os.makedirs(outdir)
+
             with io.open(output, 'w', encoding='utf8') as fp:
                 sys.stdout.write('Downloaded %d comment(s)\r' % count)
                 sys.stdout.flush()
